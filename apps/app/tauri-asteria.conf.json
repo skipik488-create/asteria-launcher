@@ -1,0 +1,27 @@
+{
+	"productName": "Asteria Launcher",
+	"mainBinaryName": "AsteriaLauncher",
+	"identifier": "dev.asteria.launcher",
+	"bundle": {
+		"copyright": "Copyright © 2026 Asteria Launcher contributors",
+		"shortDescription": "Open-source Minecraft launcher with multiple content sources and Asteria Client.",
+		"longDescription": "A Windows Minecraft launcher based on the open-source Modrinth App architecture, with offline profiles, Modrinth and CurseForge browsing, performance presets, and the optional Asteria Client HUD.",
+		"icon": ["icons/asteria/128x128.png", "icons/asteria/256x256.png", "icons/asteria/icon.ico"],
+		"targets": ["nsis"]
+	},
+	"plugins": {
+		"deep-link": {
+			"desktop": {
+				"schemes": ["asteria"]
+			},
+			"mobile": []
+		}
+	},
+	"app": {
+		"windows": [
+			{
+				"title": "Asteria Launcher"
+			}
+		]
+	}
+}

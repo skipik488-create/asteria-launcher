@@ -55,7 +55,7 @@ jobs:
           workspaces: apps/app
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @modrinth/app-frontend lint
-      - run: pnpm --filter @modrinth/app build -- --config tauri-asteria.conf.json --bundles nsis
+      - run: pnpm --filter @modrinth/app build --config tauri-asteria.conf.json --bundles nsis
       - uses: actions/upload-artifact@v4
         with:
           name: asteria-launcher-windows

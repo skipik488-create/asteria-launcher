@@ -43,7 +43,11 @@ import { useAppServerBrowse } from '@/composables/browse/use-app-server-browse'
 import { useAppEvent } from '@/composables/use-app-event'
 import { useAppSettings } from '@/composables/use-app-settings.ts'
 import { get_project, get_search_results_v3, get_version_many } from '@/helpers/cache.js'
-import { type ContentSource, getContentSourceCapabilities } from '@/helpers/content-sources'
+import {
+	type ContentSource,
+	getContentSourceCapabilities,
+	searchCurseForge,
+} from '@/helpers/content-sources'
 import {
 	get_installed_project_ids as getInstalledProjectIds,
 	getInstanceIconUrl,
@@ -587,6 +591,10 @@ const messages = defineMessages({
 		defaultMessage:
 			'CurseForge support is prepared, but an API key must be configured before search and installation can be enabled.',
 	},
+	curseForgeInstallUnavailable: {
+		id: 'app.browse.content-source.curseforge-install-unavailable',
+		defaultMessage: 'CurseForge installation is not available yet',
+	},
 	addToAnInstance: {
 		id: 'app.browse.add-to-an-instance',
 		defaultMessage: 'Add to an instance',
@@ -920,6 +928,20 @@ function getCardActions(
 	result: Labrinth.Search.v3.ResultSearchProject,
 	currentProjectType: string,
 ): CardAction[] {
+	if (contentSource.value === 'curseforge') {
+		return [
+			{
+				key: 'install',
+				label: formatMessage(messages.curseForgeInstallUnavailable),
+				icon: PlusIcon,
+				disabled: true,
+				color: 'brand',
+				type: 'outlined',
+				onClick: async () => {},
+			},
+		]
+	}
+
 	if (currentProjectType === 'server') {
 		return getServerCardActions(result)
 	}
@@ -1114,6 +1136,70 @@ async function search(requestParams: string) {
 			serverHits: [],
 			total_hits: 0,
 			per_page: 20,
+		}
+	}
+
+	if (contentSource.value === 'curseforge') {
+		const params = new URLSearchParams(requestParams)
+		const filters = params.get('new_filters') ?? ''
+		const gameVersion = filters.match(/game_versions\s*=\s*"([^"]+)"/)?.[1]
+		const loader = filters.match(/loaders\s*=\s*"([^"]+)"/)?.[1]
+		const pageSize = Number(params.get('limit') ?? 20)
+		const offset = Number(params.get('offset') ?? 0)
+		const result = await searchCurseForge({
+			query: params.get('query') ?? '',
+			projectType: projectType.value,
+			gameVersion,
+			loader,
+			index: offset,
+			pageSize,
+		})
+		const loaderNames: Record<number, string> = {
+			1: 'forge',
+			4: 'fabric',
+			5: 'quilt',
+			6: 'neoforge',
+		}
+		const hits = result.projects.map(
+			(project): Labrinth.Search.v3.ResultSearchProject => ({
+				project_id: `curseforge:${project.id}`,
+				project_types: [projectType.value],
+				all_project_types: [projectType.value],
+				slug: project.slug,
+				author: project.authors[0]?.name ?? 'CurseForge',
+				author_id: null,
+				organization: null,
+				organization_id: null,
+				name: project.name,
+				summary: project.summary,
+				categories: project.categories.map((category) => category.name.toLowerCase()),
+				display_categories: project.categories.map((category) => category.name),
+				downloads: project.downloadCount,
+				follows: 0,
+				icon_url: project.logo?.thumbnailUrl ?? project.logo?.url ?? null,
+				date_created: project.dateCreated,
+				date_modified: project.dateModified,
+				license: 'License specified on CurseForge',
+				gallery: [],
+				featured_gallery: null,
+				color: null,
+				loaders: Array.from(
+					new Set(
+						project.latestFilesIndexes
+							.map((file) => (file.modLoader ? loaderNames[file.modLoader] : undefined))
+							.filter((value): value is string => !!value),
+					),
+				),
+				minecraft_mod: projectType.value === 'mod' ? {} : null,
+				disclosure_types: [],
+			}),
+		)
+
+		return {
+			projectHits: hits,
+			serverHits: [],
+			total_hits: result.total_count,
+			per_page: result.page_size,
 		}
 	}
 

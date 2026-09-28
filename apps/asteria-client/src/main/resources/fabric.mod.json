@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "asteria-client",
+	"version": "${version}",
+	"name": "Asteria Client",
+	"description": "Modular HUD and quality-of-life client for Asteria Launcher.",
+	"authors": ["schewz"],
+	"license": "GPL-3.0-or-later",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["dev.asteria.client.AsteriaClient"]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

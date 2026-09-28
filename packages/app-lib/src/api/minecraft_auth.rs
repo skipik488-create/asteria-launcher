@@ -51,9 +51,9 @@ pub async fn finish_login(
 pub async fn create_offline_user(username: &str) -> crate::Result<Credentials> {
     let username = username.trim();
     if !(3..=16).contains(&username.len())
-        || !username
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+        || !username.chars().all(|character| {
+            character.is_ascii_alphanumeric() || character == '_'
+        })
     {
         return Err(crate::ErrorKind::InputError(
             "Offline username must be 3-16 characters and contain only letters, numbers, or underscores"

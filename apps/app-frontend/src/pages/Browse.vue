@@ -43,6 +43,7 @@ import { useAppServerBrowse } from '@/composables/browse/use-app-server-browse'
 import { useAppEvent } from '@/composables/use-app-event'
 import { useAppSettings } from '@/composables/use-app-settings.ts'
 import { get_project, get_search_results_v3, get_version_many } from '@/helpers/cache.js'
+import { type ContentSource, getContentSourceCapabilities } from '@/helpers/content-sources'
 import {
 	get_installed_project_ids as getInstalledProjectIds,
 	getInstanceIconUrl,
@@ -75,9 +76,20 @@ const debugLog = useDebugLogger('Browse')
 
 const router = useRouter()
 const route = useRoute()
-type ContentSource = 'modrinth' | 'curseforge'
 const contentSource = ref<ContentSource>(
 	route.query.source === 'curseforge' ? 'curseforge' : 'modrinth',
+)
+const contentSourceCapabilities = await getContentSourceCapabilities().catch(() => [
+	{
+		source: 'modrinth' as const,
+		search: true,
+		install: true,
+		requires_api_key: false,
+		configured: true,
+	},
+])
+const curseForgeCapability = contentSourceCapabilities.find(
+	(capability) => capability.source === 'curseforge',
 )
 const displayedBrowseRoute = shallowRef(router.currentRoute.value)
 watch(
@@ -1096,7 +1108,7 @@ function onSearchResultsInstalled(ids: string[]) {
 }
 
 async function search(requestParams: string) {
-	if (contentSource.value === 'curseforge') {
+	if (contentSource.value === 'curseforge' && !curseForgeCapability?.search) {
 		return {
 			projectHits: [],
 			serverHits: [],
@@ -1375,7 +1387,9 @@ provideBrowseManager({
 		<div
 			class="flex flex-wrap items-center gap-2 rounded-xl border border-solid border-surface-5 bg-surface-2 p-2"
 		>
-			<span class="px-2 text-sm font-semibold">{{ formatMessage(messages.contentSourceLabel) }}</span>
+			<span class="px-2 text-sm font-semibold">{{
+				formatMessage(messages.contentSourceLabel)
+			}}</span>
 			<Button
 				:type="contentSource === 'modrinth' ? 'colored' : 'standard'"
 				:color="contentSource === 'modrinth' ? 'brand' : undefined"
@@ -1392,7 +1406,7 @@ provideBrowseManager({
 			</Button>
 		</div>
 		<div
-			v-if="contentSource === 'curseforge'"
+			v-if="contentSource === 'curseforge' && !curseForgeCapability?.configured"
 			class="rounded-xl border border-solid border-orange bg-orange-bg p-3 text-sm"
 		>
 			{{ formatMessage(messages.curseForgeSetupRequired) }}

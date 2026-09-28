@@ -107,7 +107,11 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
-				<Button class="w-full" :disabled="loginDisabled" @click="offlineFormVisible = !offlineFormVisible">
+				<Button
+					class="w-full"
+					:disabled="loginDisabled"
+					@click="offlineFormVisible = !offlineFormVisible"
+				>
 					<PlusIcon />
 					{{ formatMessage(messages.addOfflineAccount) }}
 				</Button>
@@ -122,7 +126,12 @@
 						pattern="[A-Za-z0-9_]{3,16}"
 						required
 					/>
-					<Button type="colored" color="brand" :disabled="loginDisabled" @click="createOfflineAccount">
+					<Button
+						type="colored"
+						color="brand"
+						:disabled="loginDisabled"
+						@click="createOfflineAccount"
+					>
 						{{ formatMessage(messages.createOfflineAccount) }}
 					</Button>
 					<span class="text-secondary text-xs">{{

@@ -300,6 +300,7 @@ fn main() {
 
     builder = builder
         .plugin(api::auth::init())
+        .plugin(api::content_sources::init())
         .plugin(api::mr_auth::init())
         .plugin(api::onboarding_checklist::init())
         .plugin(api::import::init())

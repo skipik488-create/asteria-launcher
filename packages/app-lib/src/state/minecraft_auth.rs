@@ -710,7 +710,11 @@ impl Serialize for Credentials {
         ser.serialize_field("active", &self.active)?;
         ser.serialize_field(
             "account_type",
-            if self.is_offline() { "offline" } else { "microsoft" },
+            if self.is_offline() {
+                "offline"
+            } else {
+                "microsoft"
+            },
         )?;
         ser.end()
     }

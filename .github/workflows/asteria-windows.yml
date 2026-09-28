@@ -2,6 +2,16 @@ name: Asteria Windows
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/windows-mvp
+    paths:
+      - 'apps/app/**'
+      - 'apps/app-frontend/**'
+      - 'packages/app-lib/**'
+      - 'packages/ui/**'
+      - 'packages/assets/**'
+      - '.github/workflows/asteria-windows.yml'
   pull_request:
     paths:
       - 'apps/app/**'
@@ -12,7 +22,7 @@ on:
       - '.github/workflows/asteria-windows.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -52,3 +62,34 @@ jobs:
           path: |
             target/release/bundle/nsis/*.exe
             target/release/AsteriaLauncher.exe
+      - name: Publish downloadable Windows build branch
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $staging = Join-Path $env:RUNNER_TEMP 'asteria-windows'
+          $archive = Join-Path $env:RUNNER_TEMP 'asteria-launcher-windows.zip'
+          New-Item -ItemType Directory -Force -Path $staging | Out-Null
+          Copy-Item target/release/bundle/nsis/*.exe $staging
+          Copy-Item target/release/AsteriaLauncher.exe $staging
+          Compress-Archive -Path "$staging/*" -DestinationPath $archive -Force
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin windows-artifacts 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            git checkout -B windows-artifacts origin/windows-artifacts
+          } else {
+            git checkout --orphan windows-artifacts
+          }
+          git rm -rf . 2>$null
+          Copy-Item $archive ./asteria-launcher-windows.zip
+          @"
+          # Asteria Launcher Windows build
+
+          Automated Windows build from ``feat/windows-mvp``.
+          Commit: ``${{ github.sha }}``
+          "@ | Set-Content -Encoding utf8 README.md
+          git add README.md asteria-launcher-windows.zip
+          git commit -m "build(windows): publish ${{ github.sha }}"
+          git push origin windows-artifacts --force

@@ -212,6 +212,18 @@ pub struct Credentials {
     pub active: bool,
 }
 
+const OFFLINE_REFRESH_TOKEN: &str = "offline";
+
+impl Credentials {
+    pub fn is_offline(&self) -> bool {
+        self.refresh_token == OFFLINE_REFRESH_TOKEN
+    }
+
+    pub fn user_type(&self) -> &'static str {
+        if self.is_offline() { "legacy" } else { "msa" }
+    }
+}
+
 /// An entry in the player profile cache, keyed by player UUID.
 pub(super) enum ProfileCacheEntry {
     /// A cached profile that is valid, even though it may be stale.
@@ -271,6 +283,10 @@ impl Credentials {
         &mut self,
         exec: impl sqlx::Executor<'_, Database = sqlx::Sqlite> + Copy,
     ) -> crate::Result<()> {
+        if self.is_offline() {
+            return Ok(());
+        }
+
         // Use a margin of 5 minutes to give e.g. Minecraft and potentially
         // other operations that depend on a fresh token 5 minutes to complete
         // from now, and deal with some classes of clock skew
@@ -351,6 +367,10 @@ impl Credentials {
         &self,
         cache_intent: OnlineProfileCacheIntent,
     ) -> Option<Arc<MinecraftProfile>> {
+        if self.is_offline() {
+            return None;
+        }
+
         let max_age = cache_intent.max_age();
         let stale_profile = {
             let mut profile_cache = PROFILE_CACHE.lock().await;
@@ -682,12 +702,16 @@ impl Serialize for Credentials {
                 ),
         };
 
-        let mut ser = serializer.serialize_struct("Credentials", 5)?;
+        let mut ser = serializer.serialize_struct("Credentials", 6)?;
         ser.serialize_field("profile", &*profile)?;
         ser.serialize_field("access_token", &self.access_token)?;
         ser.serialize_field("refresh_token", &self.refresh_token)?;
         ser.serialize_field("expires", &self.expires)?;
         ser.serialize_field("active", &self.active)?;
+        ser.serialize_field(
+            "account_type",
+            if self.is_offline() { "offline" } else { "microsoft" },
+        )?;
         ser.end()
     }
 }

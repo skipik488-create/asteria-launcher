@@ -9,12 +9,18 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
         .invoke_handler(tauri::generate_handler![
             check_reachable,
             login,
+            create_offline_user,
             remove_user,
             get_default_user,
             set_default_user,
             get_users,
         ])
         .build()
+}
+
+#[tauri::command]
+pub async fn create_offline_user(username: String) -> Result<Credentials> {
+    Ok(minecraft_auth::create_offline_user(&username).await?)
 }
 
 /// Checks if the authentication servers are reachable.

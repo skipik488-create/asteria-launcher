@@ -48,6 +48,42 @@ pub async fn finish_login(
 }
 
 #[tracing::instrument]
+pub async fn create_offline_user(username: &str) -> crate::Result<Credentials> {
+    let username = username.trim();
+    if !(3..=16).contains(&username.len())
+        || !username
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        return Err(crate::ErrorKind::InputError(
+            "Offline username must be 3-16 characters and contain only letters, numbers, or underscores"
+                .to_string(),
+        )
+        .into());
+    }
+
+    let mut digest = md5::compute(format!("OfflinePlayer:{username}")).0;
+    digest[6] = (digest[6] & 0x0f) | 0x30;
+    digest[8] = (digest[8] & 0x3f) | 0x80;
+
+    let state = State::get().await?;
+    let credentials = Credentials {
+        offline_profile: crate::state::MinecraftProfile {
+            id: uuid::Uuid::from_bytes(digest),
+            name: username.to_string(),
+            ..crate::state::MinecraftProfile::default()
+        },
+        access_token: "0".to_string(),
+        refresh_token: "offline".to_string(),
+        expires: chrono::Utc::now(),
+        active: true,
+    };
+    credentials.upsert(&state.pool).await?;
+
+    Ok(credentials)
+}
+
+#[tracing::instrument]
 pub async fn get_default_user() -> crate::Result<Option<uuid::Uuid>> {
     let state = State::get().await?;
     let user = Credentials::get_default_credential(&state.pool).await?;

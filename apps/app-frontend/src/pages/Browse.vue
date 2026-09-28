@@ -13,6 +13,7 @@ import type { BrowseInstallContentType, CardAction, ProjectType, Tags } from '@m
 import {
 	BrowsePageLayout,
 	BrowseSidebar,
+	Button,
 	commonMessages,
 	ContextMenu,
 	CreationFlowModal,
@@ -74,6 +75,10 @@ const debugLog = useDebugLogger('Browse')
 
 const router = useRouter()
 const route = useRoute()
+type ContentSource = 'modrinth' | 'curseforge'
+const contentSource = ref<ContentSource>(
+	route.query.source === 'curseforge' ? 'curseforge' : 'modrinth',
+)
 const displayedBrowseRoute = shallowRef(router.currentRoute.value)
 watch(
 	() => router.currentRoute.value,
@@ -552,6 +557,23 @@ const messages = defineMessages({
 	projectActionsLabel: {
 		id: 'app.browse.project-actions.label',
 		defaultMessage: 'Project actions',
+	},
+	contentSourceLabel: {
+		id: 'app.browse.content-source.label',
+		defaultMessage: 'Content source',
+	},
+	modrinthSource: {
+		id: 'app.browse.content-source.modrinth',
+		defaultMessage: 'Modrinth',
+	},
+	curseForgeSource: {
+		id: 'app.browse.content-source.curseforge',
+		defaultMessage: 'CurseForge',
+	},
+	curseForgeSetupRequired: {
+		id: 'app.browse.content-source.curseforge-setup-required',
+		defaultMessage:
+			'CurseForge support is prepared, but an API key must be configured before search and installation can be enabled.',
 	},
 	addToAnInstance: {
 		id: 'app.browse.add-to-an-instance',
@@ -1074,6 +1096,15 @@ function onSearchResultsInstalled(ids: string[]) {
 }
 
 async function search(requestParams: string) {
+	if (contentSource.value === 'curseforge') {
+		return {
+			projectHits: [],
+			serverHits: [],
+			total_hits: 0,
+			per_page: 20,
+		}
+	}
+
 	debugLog('searching v3', requestParams)
 	const isServer = projectType.value === 'server'
 
@@ -1154,13 +1185,23 @@ const searchState = useBrowseSearch({
 	active: browseRouteActive,
 	providedFilters: combinedProvidedFilters,
 	search,
-	persistentQueryParams: ['i', 'ai', 'shi', 'sid', 'wid', 'from'],
+	persistentQueryParams: ['i', 'ai', 'shi', 'sid', 'wid', 'from', 'source'],
 	getExtraQueryParams: () => ({
 		sid: serverIdQuery.value || undefined,
 		wid: effectiveServerWorldId.value || undefined,
 		ai: instanceHideInstalled.value ? 'true' : undefined,
 		shi: serverHideInstalled.value ? 'true' : undefined,
 	}),
+})
+
+watch(contentSource, async (source) => {
+	await router.replace({
+		query: {
+			...route.query,
+			source: source === 'modrinth' ? undefined : source,
+		},
+	})
+	await searchState.refreshSearch()
 })
 
 watch(
@@ -1331,6 +1372,31 @@ provideBrowseManager({
 
 <template>
 	<div class="flex flex-col gap-2 p-6">
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-xl border border-solid border-surface-5 bg-surface-2 p-2"
+		>
+			<span class="px-2 text-sm font-semibold">{{ formatMessage(messages.contentSourceLabel) }}</span>
+			<Button
+				:type="contentSource === 'modrinth' ? 'colored' : 'standard'"
+				:color="contentSource === 'modrinth' ? 'brand' : undefined"
+				@click="contentSource = 'modrinth'"
+			>
+				{{ formatMessage(messages.modrinthSource) }}
+			</Button>
+			<Button
+				:type="contentSource === 'curseforge' ? 'colored' : 'standard'"
+				:color="contentSource === 'curseforge' ? 'brand' : undefined"
+				@click="contentSource = 'curseforge'"
+			>
+				{{ formatMessage(messages.curseForgeSource) }}
+			</Button>
+		</div>
+		<div
+			v-if="contentSource === 'curseforge'"
+			class="rounded-xl border border-solid border-orange bg-orange-bg p-3 text-sm"
+		>
+			{{ formatMessage(messages.curseForgeSetupRequired) }}
+		</div>
 		<BrowsePageLayout>
 			<template #after>
 				<ContextMenu ref="contextMenuRef" :label="formatMessage(messages.projectActionsLabel)">

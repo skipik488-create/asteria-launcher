@@ -34,6 +34,14 @@ export async function login() {
 }
 
 /**
+ * Creates a local profile for singleplayer and offline-mode servers.
+ * @param {string} username
+ */
+export async function create_offline_user(username) {
+	return await invoke('plugin:auth|create_offline_user', { username })
+}
+
+/**
  * Retrieves the default user
  * @return {Promise<UUID | undefined>}
  */

@@ -13,6 +13,7 @@ import type { BrowseInstallContentType, CardAction, ProjectType, Tags } from '@m
 import {
 	BrowsePageLayout,
 	BrowseSidebar,
+	Button,
 	commonMessages,
 	ContextMenu,
 	CreationFlowModal,
@@ -42,6 +43,11 @@ import { useAppServerBrowse } from '@/composables/browse/use-app-server-browse'
 import { useAppEvent } from '@/composables/use-app-event'
 import { useAppSettings } from '@/composables/use-app-settings.ts'
 import { get_project, get_search_results_v3, get_version_many } from '@/helpers/cache.js'
+import {
+	type ContentSource,
+	getContentSourceCapabilities,
+	searchCurseForge,
+} from '@/helpers/content-sources'
 import {
 	get_installed_project_ids as getInstalledProjectIds,
 	getInstanceIconUrl,
@@ -74,6 +80,21 @@ const debugLog = useDebugLogger('Browse')
 
 const router = useRouter()
 const route = useRoute()
+const contentSource = ref<ContentSource>(
+	route.query.source === 'curseforge' ? 'curseforge' : 'modrinth',
+)
+const contentSourceCapabilities = await getContentSourceCapabilities().catch(() => [
+	{
+		source: 'modrinth' as const,
+		search: true,
+		install: true,
+		requires_api_key: false,
+		configured: true,
+	},
+])
+const curseForgeCapability = contentSourceCapabilities.find(
+	(capability) => capability.source === 'curseforge',
+)
 const displayedBrowseRoute = shallowRef(router.currentRoute.value)
 watch(
 	() => router.currentRoute.value,
@@ -553,6 +574,27 @@ const messages = defineMessages({
 		id: 'app.browse.project-actions.label',
 		defaultMessage: 'Project actions',
 	},
+	contentSourceLabel: {
+		id: 'app.browse.content-source.label',
+		defaultMessage: 'Content source',
+	},
+	modrinthSource: {
+		id: 'app.browse.content-source.modrinth',
+		defaultMessage: 'Modrinth',
+	},
+	curseForgeSource: {
+		id: 'app.browse.content-source.curseforge',
+		defaultMessage: 'CurseForge',
+	},
+	curseForgeSetupRequired: {
+		id: 'app.browse.content-source.curseforge-setup-required',
+		defaultMessage:
+			'CurseForge support is prepared, but an API key must be configured before search and installation can be enabled.',
+	},
+	curseForgeInstallUnavailable: {
+		id: 'app.browse.content-source.curseforge-install-unavailable',
+		defaultMessage: 'CurseForge installation is not available yet',
+	},
 	addToAnInstance: {
 		id: 'app.browse.add-to-an-instance',
 		defaultMessage: 'Add to an instance',
@@ -886,6 +928,20 @@ function getCardActions(
 	result: Labrinth.Search.v3.ResultSearchProject,
 	currentProjectType: string,
 ): CardAction[] {
+	if (contentSource.value === 'curseforge') {
+		return [
+			{
+				key: 'install',
+				label: formatMessage(messages.curseForgeInstallUnavailable),
+				icon: PlusIcon,
+				disabled: true,
+				color: 'brand',
+				type: 'outlined',
+				onClick: async () => {},
+			},
+		]
+	}
+
 	if (currentProjectType === 'server') {
 		return getServerCardActions(result)
 	}
@@ -1074,6 +1130,79 @@ function onSearchResultsInstalled(ids: string[]) {
 }
 
 async function search(requestParams: string) {
+	if (contentSource.value === 'curseforge' && !curseForgeCapability?.search) {
+		return {
+			projectHits: [],
+			serverHits: [],
+			total_hits: 0,
+			per_page: 20,
+		}
+	}
+
+	if (contentSource.value === 'curseforge') {
+		const params = new URLSearchParams(requestParams)
+		const filters = params.get('new_filters') ?? ''
+		const gameVersion = filters.match(/game_versions\s*=\s*"([^"]+)"/)?.[1]
+		const loader = filters.match(/loaders\s*=\s*"([^"]+)"/)?.[1]
+		const pageSize = Number(params.get('limit') ?? 20)
+		const offset = Number(params.get('offset') ?? 0)
+		const result = await searchCurseForge({
+			query: params.get('query') ?? '',
+			projectType: projectType.value,
+			gameVersion,
+			loader,
+			index: offset,
+			pageSize,
+		})
+		const loaderNames: Record<number, string> = {
+			1: 'forge',
+			4: 'fabric',
+			5: 'quilt',
+			6: 'neoforge',
+		}
+		const hits = result.projects.map(
+			(project): Labrinth.Search.v3.ResultSearchProject => ({
+				project_id: `curseforge:${project.id}`,
+				project_types: [projectType.value],
+				all_project_types: [projectType.value],
+				slug: project.slug,
+				author: project.authors[0]?.name ?? 'CurseForge',
+				author_id: null,
+				organization: null,
+				organization_id: null,
+				name: project.name,
+				summary: project.summary,
+				categories: project.categories.map((category) => category.name.toLowerCase()),
+				display_categories: project.categories.map((category) => category.name),
+				downloads: project.downloadCount,
+				follows: 0,
+				icon_url: project.logo?.thumbnailUrl ?? project.logo?.url ?? null,
+				date_created: project.dateCreated,
+				date_modified: project.dateModified,
+				license: 'License specified on CurseForge',
+				gallery: [],
+				featured_gallery: null,
+				color: null,
+				loaders: Array.from(
+					new Set(
+						project.latestFilesIndexes
+							.map((file) => (file.modLoader ? loaderNames[file.modLoader] : undefined))
+							.filter((value): value is string => !!value),
+					),
+				),
+				minecraft_mod: projectType.value === 'mod' ? {} : null,
+				disclosure_types: [],
+			}),
+		)
+
+		return {
+			projectHits: hits,
+			serverHits: [],
+			total_hits: result.total_count,
+			per_page: result.page_size,
+		}
+	}
+
 	debugLog('searching v3', requestParams)
 	const isServer = projectType.value === 'server'
 
@@ -1154,13 +1283,23 @@ const searchState = useBrowseSearch({
 	active: browseRouteActive,
 	providedFilters: combinedProvidedFilters,
 	search,
-	persistentQueryParams: ['i', 'ai', 'shi', 'sid', 'wid', 'from'],
+	persistentQueryParams: ['i', 'ai', 'shi', 'sid', 'wid', 'from', 'source'],
 	getExtraQueryParams: () => ({
 		sid: serverIdQuery.value || undefined,
 		wid: effectiveServerWorldId.value || undefined,
 		ai: instanceHideInstalled.value ? 'true' : undefined,
 		shi: serverHideInstalled.value ? 'true' : undefined,
 	}),
+})
+
+watch(contentSource, async (source) => {
+	await router.replace({
+		query: {
+			...route.query,
+			source: source === 'modrinth' ? undefined : source,
+		},
+	})
+	await searchState.refreshSearch()
 })
 
 watch(
@@ -1331,6 +1470,33 @@ provideBrowseManager({
 
 <template>
 	<div class="flex flex-col gap-2 p-6">
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-xl border border-solid border-surface-5 bg-surface-2 p-2"
+		>
+			<span class="px-2 text-sm font-semibold">{{
+				formatMessage(messages.contentSourceLabel)
+			}}</span>
+			<Button
+				:type="contentSource === 'modrinth' ? 'colored' : 'standard'"
+				:color="contentSource === 'modrinth' ? 'brand' : undefined"
+				@click="contentSource = 'modrinth'"
+			>
+				{{ formatMessage(messages.modrinthSource) }}
+			</Button>
+			<Button
+				:type="contentSource === 'curseforge' ? 'colored' : 'standard'"
+				:color="contentSource === 'curseforge' ? 'brand' : undefined"
+				@click="contentSource = 'curseforge'"
+			>
+				{{ formatMessage(messages.curseForgeSource) }}
+			</Button>
+		</div>
+		<div
+			v-if="contentSource === 'curseforge' && !curseForgeCapability?.configured"
+			class="rounded-xl border border-solid border-orange bg-orange-bg p-3 text-sm"
+		>
+			{{ formatMessage(messages.curseForgeSetupRequired) }}
+		</div>
 		<BrowsePageLayout>
 			<template #after>
 				<ContextMenu ref="contextMenuRef" :label="formatMessage(messages.projectActionsLabel)">

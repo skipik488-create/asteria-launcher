@@ -12,6 +12,7 @@ import type ModpackAlreadyInstalledModal from '@/components/ui/modal/ModpackAlre
 import { useAppSettings } from '@/composables/use-app-settings.ts'
 import { trackEvent } from '@/helpers/analytics'
 import { get_project, get_search_results } from '@/helpers/cache.js'
+import { installAsteriaClient } from '@/helpers/content-sources'
 import { import_instance } from '@/helpers/import.js'
 import {
 	type CreatePackLocation,
@@ -177,6 +178,10 @@ export function setupCreationModal(
 				iconPath,
 				iconConfig: iconPath ? getGeneratedIconConfig?.(iconPath) : null,
 			})
+			const instanceId = installJobInstanceId(job)
+			if (config.installAsteriaClient.value && instanceId) {
+				await installAsteriaClient(instanceId)
+			}
 			await navigateToCreatedInstance(job)
 
 			trackEvent('InstanceCreate', {

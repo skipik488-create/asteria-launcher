@@ -181,6 +181,7 @@ export interface CreationFlowContextValue {
 	instanceIconPath: Ref<string | null>
 	randomizeInstanceIcon: (() => Promise<GeneratedInstanceIcon | null>) | null
 	customizeInstanceIcon: (() => void) | null
+	installAsteriaClient: Ref<boolean>
 
 	// Loader/version state (custom setup)
 	selectedLoader: Ref<string | null>
@@ -324,6 +325,7 @@ export function createCreationFlowContext(
 	const instanceIcon = ref<File | null>(null)
 	const instanceIconUrl = ref<string | null>(null)
 	const instanceIconPath = ref<string | null>(null)
+	const installAsteriaClient = ref(false)
 
 	// Revoke old object URL when icon is cleared to avoid memory leaks
 	watch(instanceIconUrl, (_newUrl, oldUrl) => {
@@ -488,6 +490,7 @@ export function createCreationFlowContext(
 		instanceIconUrl.value = null
 		instanceIcon.value = null
 		instanceIconPath.value = null
+		installAsteriaClient.value = false
 
 		selectedLoader.value = null
 		selectedGameVersion.value = null
@@ -660,6 +663,7 @@ export function createCreationFlowContext(
 		instanceIconPath,
 		randomizeInstanceIcon,
 		customizeInstanceIcon,
+		installAsteriaClient,
 		selectedLoader,
 		selectedGameVersion,
 		loaderVersionType,

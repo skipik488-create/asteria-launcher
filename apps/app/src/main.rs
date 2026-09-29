@@ -141,7 +141,7 @@ fn main() {
 
     let _log_guard = theseus::start_logger(&tauri_context.config().identifier);
 
-    tracing::info!("Initialized tracing subscriber. Loading Modrinth App!");
+    tracing::info!("Initialized tracing subscriber. Loading Asteria Launcher!");
 
     let mut builder = tauri::Builder::default();
 
@@ -197,7 +197,7 @@ fn main() {
 
         // Refresh the hidden window's frame before window-state measures its client area.
         builder = builder.plugin(
-            tauri::plugin::Builder::new("window-frame")
+            tauri::plugin::Builder::<tauri::Wry>::new("window-frame")
                 .on_window_ready(|window| {
                     if window.label() != "main" {
                         return;
@@ -300,6 +300,7 @@ fn main() {
 
     builder = builder
         .plugin(api::auth::init())
+        .plugin(api::content_sources::init())
         .plugin(api::mr_auth::init())
         .plugin(api::onboarding_checklist::init())
         .plugin(api::import::init())
@@ -462,7 +463,7 @@ fn main() {
                     DialogBuilder::message()
                         .set_level(MessageLevel::Error)
                         .set_title("Initialization error")
-                        .set_text("Your Microsoft Edge WebView2 installation is corrupt.\n\nMicrosoft Edge WebView2 is required to run Modrinth App.\n\nLearn how to repair it at https://support.modrinth.com/en/articles/8797765-corrupted-microsoft-edge-webview2-installation")
+                        .set_text("Your Microsoft Edge WebView2 installation is corrupt.\n\nMicrosoft Edge WebView2 is required to run Asteria Launcher.\n\nRepair or reinstall Microsoft Edge WebView2, then launch Asteria again.")
                         .alert()
                         .show()
                         .unwrap();

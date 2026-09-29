@@ -26,10 +26,56 @@ const appSettings = useAppSettings()
 const settings = ref(await get())
 const purgeCacheConfirmModal = ref(null)
 
+const performancePresets = [
+	{
+		id: 'low-end',
+		memory: 3072,
+		downloads: 3,
+		writes: 6,
+	},
+	{
+		id: 'balanced',
+		memory: 6144,
+		downloads: 6,
+		writes: 12,
+	},
+	{
+		id: 'high-end',
+		memory: 10240,
+		downloads: 10,
+		writes: 24,
+	},
+]
+
 const messages = defineMessages({
 	appDirectoryTitle: {
 		id: 'app.settings.resource-management.app-directory.title',
 		defaultMessage: 'App directory',
+	},
+	performancePresetsTitle: {
+		id: 'app.settings.resource-management.performance-presets.title',
+		defaultMessage: 'Performance presets',
+	},
+	performancePresetsDescription: {
+		id: 'app.settings.resource-management.performance-presets.description',
+		defaultMessage:
+			'Quickly configure memory and parallel I/O. You can still fine-tune every value below.',
+	},
+	lowEndPreset: {
+		id: 'app.settings.resource-management.performance-presets.low-end',
+		defaultMessage: 'Low-end PC',
+	},
+	balancedPreset: {
+		id: 'app.settings.resource-management.performance-presets.balanced',
+		defaultMessage: 'Balanced',
+	},
+	highEndPreset: {
+		id: 'app.settings.resource-management.performance-presets.high-end',
+		defaultMessage: 'High-end PC',
+	},
+	presetApplied: {
+		id: 'app.settings.resource-management.performance-presets.applied',
+		defaultMessage: '{memory} GB RAM · {downloads} downloads · {writes} writes',
 	},
 	appDirectoryDescription: {
 		id: 'app.settings.resource-management.app-directory.description',
@@ -168,10 +214,49 @@ async function findLauncherDir() {
 		settings.value.custom_dir = newDir
 	}
 }
+
+function applyPerformancePreset(preset) {
+	settings.value.memory.maximum = preset.memory
+	settings.value.max_concurrent_downloads = preset.downloads
+	settings.value.max_concurrent_writes = preset.writes
+}
+
+function getPresetLabel(preset) {
+	if (preset.id === 'low-end') return formatMessage(messages.lowEndPreset)
+	if (preset.id === 'high-end') return formatMessage(messages.highEndPreset)
+	return formatMessage(messages.balancedPreset)
+}
 </script>
 
 <template>
 	<div class="flex flex-col gap-6">
+		<div class="flex flex-col gap-2.5">
+			<h2 class="m-0 text-lg font-semibold text-contrast">
+				{{ formatMessage(messages.performancePresetsTitle) }}
+			</h2>
+			<p class="m-0 leading-tight text-secondary">
+				{{ formatMessage(messages.performancePresetsDescription) }}
+			</p>
+			<div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+				<Button
+					v-for="preset in performancePresets"
+					:key="preset.id"
+					class="flex h-auto flex-col items-start gap-1 p-3 text-left"
+					@click="applyPerformancePreset(preset)"
+				>
+					<span class="font-semibold">{{ getPresetLabel(preset) }}</span>
+					<span class="text-xs text-secondary">
+						{{
+							formatMessage(messages.presetApplied, {
+								memory: preset.memory / 1024,
+								downloads: preset.downloads,
+								writes: preset.writes,
+							})
+						}}
+					</span>
+				</Button>
+			</div>
+		</div>
 		<ContentStorageSettings />
 		<div class="flex flex-col gap-2.5">
 			<h2 class="m-0 text-lg font-semibold text-contrast">

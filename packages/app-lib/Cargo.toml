@@ -116,6 +116,7 @@ toml = { workspace = true }
 tracing = { workspace = true }
 tracing-error = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["chrono", "env-filter"] }
+md5 = { workspace = true }
 ts-rs = { workspace = true, features = [
   "chrono-impl",
   "no-serde-warnings",

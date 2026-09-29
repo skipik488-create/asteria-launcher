@@ -9,6 +9,26 @@
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
 		</Button>
+		<Button :disabled="loginDisabled" @click="offlineFormVisible = true">
+			<PlusIcon />
+			{{ formatMessage(messages.addOfflineAccount) }}
+		</Button>
+		<div v-if="offlineFormVisible" class="flex flex-col gap-2">
+			<input
+				v-model="offlineUsername"
+				class="w-full rounded-lg border border-solid border-surface-5 bg-surface-2 px-3 py-2 text-primary"
+				:placeholder="formatMessage(messages.offlineUsername)"
+				autocomplete="off"
+				maxlength="16"
+				minlength="3"
+				pattern="[A-Za-z0-9_]{3,16}"
+				required
+			/>
+			<Button type="colored" color="brand" :disabled="loginDisabled" @click="createOfflineAccount">
+				{{ formatMessage(messages.createOfflineAccount) }}
+			</Button>
+			<span class="text-secondary text-xs">{{ formatMessage(messages.offlineAccountNotice) }}</span>
+		</div>
 	</div>
 	<Accordion
 		v-else
@@ -30,7 +50,11 @@
 					<span class="truncate w-full text-left">{{
 						selectedAccount ? selectedAccount.profile.name : formatMessage(messages.selectAccount)
 					}}</span>
-					<span class="text-secondary text-xs">{{ formatMessage(messages.minecraftAccount) }}</span>
+					<span class="text-secondary text-xs">{{
+						selectedAccount?.account_type === 'offline'
+							? formatMessage(messages.offlineAccount)
+							: formatMessage(messages.minecraftAccount)
+					}}</span>
 				</div>
 			</div>
 		</template>
@@ -57,6 +81,9 @@
 						>
 							{{ account.profile.name }}
 						</p>
+						<span v-if="account.account_type === 'offline'" class="text-secondary text-xs">
+							{{ formatMessage(messages.offlineBadge) }}
+						</span>
 					</button>
 					<IconButton
 						v-tooltip="formatMessage(messages.removeAccount)"
@@ -80,6 +107,37 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
+				<Button
+					class="w-full"
+					:disabled="loginDisabled"
+					@click="offlineFormVisible = !offlineFormVisible"
+				>
+					<PlusIcon />
+					{{ formatMessage(messages.addOfflineAccount) }}
+				</Button>
+				<div v-if="offlineFormVisible" class="flex flex-col gap-2">
+					<input
+						v-model="offlineUsername"
+						class="w-full rounded-lg border border-solid border-surface-5 bg-surface-2 px-3 py-2 text-primary"
+						:placeholder="formatMessage(messages.offlineUsername)"
+						autocomplete="off"
+						maxlength="16"
+						minlength="3"
+						pattern="[A-Za-z0-9_]{3,16}"
+						required
+					/>
+					<Button
+						type="colored"
+						color="brand"
+						:disabled="loginDisabled"
+						@click="createOfflineAccount"
+					>
+						{{ formatMessage(messages.createOfflineAccount) }}
+					</Button>
+					<span class="text-secondary text-xs">{{
+						formatMessage(messages.offlineAccountNotice)
+					}}</span>
+				</div>
 			</div>
 		</div>
 	</Accordion>
@@ -110,6 +168,7 @@ import { useAppEvent } from '@/composables/use-app-event'
 import { handleSevereError } from '@/composables/use-error.js'
 import { trackEvent } from '@/helpers/analytics'
 import {
+	create_offline_user,
 	get_default_user,
 	login as login_flow,
 	remove_user,
@@ -128,6 +187,7 @@ const emit = defineEmits<{
 }>()
 
 type MinecraftCredential = {
+	account_type: 'microsoft' | 'offline'
 	profile: {
 		id: string
 		name: string
@@ -136,6 +196,8 @@ type MinecraftCredential = {
 
 const accounts: Ref<MinecraftCredential[]> = ref([])
 const loginDisabled = ref(false)
+const offlineFormVisible = ref(false)
+const offlineUsername = ref('')
 const defaultUser = ref<string | undefined>()
 const equippedSkin = ref<Skin | null>(null)
 const equippedHeadUrl = ref<string>()
@@ -247,6 +309,17 @@ async function login() {
 	loginDisabled.value = false
 }
 
+async function createOfflineAccount() {
+	loginDisabled.value = true
+	const account = await create_offline_user(offlineUsername.value).catch(handleSevereError)
+	if (account) {
+		offlineUsername.value = ''
+		offlineFormVisible.value = false
+		await setAccount(account)
+	}
+	loginDisabled.value = false
+}
+
 async function logout(id: string) {
 	await remove_user(id).catch(handleError)
 	await refreshValues()
@@ -288,6 +361,31 @@ const messages = defineMessages({
 	signInToMinecraft: {
 		id: 'minecraft-account.sign-in',
 		defaultMessage: 'Sign in to Minecraft',
+	},
+	addOfflineAccount: {
+		id: 'minecraft-account.add-offline-account',
+		defaultMessage: 'Add offline profile',
+	},
+	createOfflineAccount: {
+		id: 'minecraft-account.create-offline-account',
+		defaultMessage: 'Create profile',
+	},
+	offlineUsername: {
+		id: 'minecraft-account.offline-username',
+		defaultMessage: 'Minecraft username',
+	},
+	offlineAccount: {
+		id: 'minecraft-account.offline-label',
+		defaultMessage: 'Offline profile',
+	},
+	offlineBadge: {
+		id: 'minecraft-account.offline-badge',
+		defaultMessage: 'Offline',
+	},
+	offlineAccountNotice: {
+		id: 'minecraft-account.offline-notice',
+		defaultMessage:
+			'For singleplayer and offline-mode servers only. This does not bypass Microsoft authentication.',
 	},
 })
 </script>

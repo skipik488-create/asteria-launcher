@@ -56,3 +56,6 @@ export async function searchCurseForge(input: {
 		pageSize: input.pageSize,
 	})
 }
+export async function installAsteriaClient(instanceId: string): Promise<string> {
+	return await invoke('plugin:content_sources|install_asteria_client', { instanceId })
+}

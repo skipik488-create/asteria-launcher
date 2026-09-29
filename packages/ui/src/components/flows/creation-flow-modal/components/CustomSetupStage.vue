@@ -94,6 +94,24 @@
 			/>
 		</div>
 
+		<!-- Optional Asteria Client bundle -->
+		<div
+			v-if="
+				ctx.flowType === 'instance' && selectedLoader === 'fabric' && selectedGameVersion === '26.3'
+			"
+			class="flex items-center justify-between gap-4 rounded-2xl border border-solid border-surface-5 bg-surface-2 p-4"
+		>
+			<div class="flex min-w-0 flex-col gap-1">
+				<span class="font-semibold text-contrast">{{
+					formatMessage(messages.asteriaClientLabel)
+				}}</span>
+				<span class="text-sm text-secondary">{{
+					formatMessage(messages.asteriaClientDescription)
+				}}</span>
+			</div>
+			<Toggle v-model="ctx.installAsteriaClient.value" class="shrink-0" />
+		</div>
+
 		<!-- Loader chips -->
 		<div v-if="!hideLoaderChips" class="flex flex-col gap-2">
 			<span class="font-semibold text-contrast">{{
@@ -237,6 +255,7 @@ import Collapsible from '../../../base/Collapsible.vue'
 import Combobox, { type ComboboxOption } from '../../../base/Combobox.vue'
 import Input from '../../../base/inputs/Input.vue'
 import PaperChannelBadge from '../../../base/PaperChannelBadge.vue'
+import Toggle from '../../../base/Toggle.vue'
 import type { LoaderVersionEntry, LoaderVersionType } from '../creation-flow-context'
 import { injectCreationFlowContext } from '../creation-flow-context'
 import { formatLoaderLabel } from '../shared'
@@ -278,6 +297,14 @@ const messages = defineMessages({
 	loaderLabel: {
 		id: 'creation-flow.modal.custom-setup.loader.label',
 		defaultMessage: 'Loader',
+	},
+	asteriaClientLabel: {
+		id: 'creation-flow.modal.custom-setup.asteria-client.label',
+		defaultMessage: 'Install Asteria Client',
+	},
+	asteriaClientDescription: {
+		id: 'creation-flow.modal.custom-setup.asteria-client.description',
+		defaultMessage: 'Adds the Asteria HUD and module menu to this instance.',
 	},
 	contentLoaderLabel: {
 		id: 'creation-flow.modal.custom-setup.content-loader.label',
@@ -619,6 +646,12 @@ function getLoaderVersionsForGameVersion(
 }
 
 // Fetch version data when loader changes so game versions can be filtered
+watch([() => selectedLoader.value, () => selectedGameVersion.value], ([loader, gameVersion]) => {
+	if (loader !== 'fabric' || gameVersion !== '26.3') {
+		ctx.installAsteriaClient.value = false
+	}
+})
+
 watch(
 	() => selectedLoader.value,
 	async (loader) => {

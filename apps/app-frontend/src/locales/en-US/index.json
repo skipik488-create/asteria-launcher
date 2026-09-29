@@ -4445,11 +4445,29 @@
   "minecraft-account.add-account": {
     "message": "Add account"
   },
+  "minecraft-account.add-offline-account": {
+    "message": "Add offline account"
+  },
+  "minecraft-account.cancel": {
+    "message": "Cancel"
+  },
+  "minecraft-account.create-account": {
+    "message": "Create account"
+  },
   "minecraft-account.label": {
     "message": "Minecraft account"
   },
   "minecraft-account.not-signed-in": {
     "message": "Not signed in"
+  },
+  "minecraft-account.offline-account": {
+    "message": "Offline account"
+  },
+  "minecraft-account.offline-description": {
+    "message": "Offline accounts work without Microsoft sign-in. They cannot join online-mode servers."
+  },
+  "minecraft-account.offline-username": {
+    "message": "Minecraft username"
   },
   "minecraft-account.remove-account": {
     "message": "Remove account"
@@ -4459,6 +4477,9 @@
   },
   "minecraft-account.sign-in": {
     "message": "Sign in to Minecraft"
+  },
+  "minecraft-account.username-placeholder": {
+    "message": "3-16 letters, numbers, or underscores"
   },
   "minecraft-required.description": {
     "message": "You need a Microsoft account that owns Minecraft before you can launch and play."

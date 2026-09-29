@@ -1,4 +1,4 @@
 # Asteria Launcher Windows build
 
 Automated Windows build from `feat/windows-mvp`.
-Commit: `7aaf43c35bc1b456265ee351ed433827ff26fde0`
+Commit: `cfd1cd20abd88eddee34d5e5dc0218387c1d2ad4`

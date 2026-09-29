@@ -1,9 +1,11 @@
 //! Authentication flow interface
 
+use chrono::{Duration, Utc};
 use reqwest::StatusCode;
+use uuid::Uuid;
 
 use crate::State;
-use crate::state::{Credentials, MinecraftLoginFlow};
+use crate::state::{Credentials, MinecraftLoginFlow, MinecraftProfile};
 use crate::util::fetch::INSECURE_REQWEST_CLIENT;
 
 #[tracing::instrument]
@@ -35,6 +37,51 @@ pub async fn finish_login(
 
     let credentials =
         crate::state::login_finish(code, flow, &state.pool).await?;
+
+    if let Err(error) =
+        crate::onboarding_checklist::mark_logged_into_minecraft().await
+    {
+        tracing::warn!(
+            "Failed to mark Minecraft login in onboarding checklist: {error}"
+        );
+    }
+
+    Ok(credentials)
+}
+
+#[tracing::instrument]
+pub async fn create_offline_user(username: &str) -> crate::Result<Credentials> {
+    let username = username.trim();
+    if !(3..=16).contains(&username.len())
+        || !username
+            .bytes()
+            .all(|character| character.is_ascii_alphanumeric() || character == b'_')
+    {
+        return Err(crate::ErrorKind::InputError(
+            "Minecraft usernames must be 3-16 characters and contain only letters, numbers, and underscores"
+                .to_string(),
+        )
+        .as_error());
+    }
+
+    let mut uuid_bytes = md5::compute(format!("OfflinePlayer:{username}")).0;
+    uuid_bytes[6] = (uuid_bytes[6] & 0x0f) | 0x30;
+    uuid_bytes[8] = (uuid_bytes[8] & 0x3f) | 0x80;
+
+    let credentials = Credentials {
+        offline_profile: MinecraftProfile {
+            id: Uuid::from_bytes(uuid_bytes),
+            name: username.to_string(),
+            ..MinecraftProfile::default()
+        },
+        access_token: String::new(),
+        refresh_token: String::new(),
+        expires: Utc::now() + Duration::days(36_500),
+        active: true,
+    };
+
+    let state = State::get().await?;
+    credentials.upsert(&state.pool).await?;
 
     if let Err(error) =
         crate::onboarding_checklist::mark_logged_into_minecraft().await

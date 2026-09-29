@@ -31,10 +31,10 @@ jobs:
       MODRINTH_API_BASE_URL: https://api.modrinth.com/
       MODRINTH_API_URL: https://api.modrinth.com/v2/
       MODRINTH_API_URL_V3: https://api.modrinth.com/v3/
-      MODRINTH_LAUNCHER_META_URL: https://launcher-files.modrinth.com/
-      MODRINTH_SOCKET_URL: wss://api.modrinth.com/v3/ws
+      MODRINTH_LAUNCHER_META_URL: https://launcher-meta.modrinth.com/
+      MODRINTH_SOCKET_URL: wss://api.modrinth.com/
       MODRINTH_URL: https://modrinth.com/
-      SHARED_INSTANCES_API_BASE_URL: https://api.modrinth.com/
+      SHARED_INSTANCES_API_BASE_URL: https://shared-instances.modrinth.com/
       MODRINTH_EXTERNAL_UPDATE_PROVIDER: 'true'
       CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
     steps:

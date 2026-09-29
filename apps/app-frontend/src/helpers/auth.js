@@ -34,6 +34,15 @@ export async function login() {
 }
 
 /**
+ * Creates and selects a local Minecraft account.
+ * @param {string} username
+ * @returns {Promise<Credential>}
+ */
+export async function create_offline_user(username) {
+	return await invoke('plugin:auth|create_offline_user', { username })
+}
+
+/**
  * Retrieves the default user
  * @return {Promise<UUID | undefined>}
  */

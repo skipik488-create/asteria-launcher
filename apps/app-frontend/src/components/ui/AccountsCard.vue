@@ -9,6 +9,10 @@
 			<SpinnerIcon v-else class="animate-spin" />
 			{{ formatMessage(messages.signInToMinecraft) }}
 		</Button>
+		<Button :disabled="loginDisabled" @click="showOfflineAccountModal()">
+			<TagCategoryWifiOffIcon />
+			{{ formatMessage(messages.addOfflineAccount) }}
+		</Button>
 	</div>
 	<Accordion
 		v-else
@@ -30,7 +34,11 @@
 					<span class="truncate w-full text-left">{{
 						selectedAccount ? selectedAccount.profile.name : formatMessage(messages.selectAccount)
 					}}</span>
-					<span class="text-secondary text-xs">{{ formatMessage(messages.minecraftAccount) }}</span>
+					<span class="text-secondary text-xs">{{
+						formatMessage(
+							selectedAccount?.offline ? messages.offlineAccount : messages.minecraftAccount,
+						)
+					}}</span>
 				</div>
 			</div>
 		</template>
@@ -80,9 +88,54 @@
 					<PlusIcon />
 					{{ formatMessage(messages.addAccount) }}
 				</Button>
+				<Button
+					v-if="accounts.length > 0"
+					class="w-full !bg-button-bg !text-primary ![box-shadow:var(--shadow-button)]"
+					:disabled="loginDisabled"
+					@click="showOfflineAccountModal()"
+				>
+					<TagCategoryWifiOffIcon />
+					{{ formatMessage(messages.addOfflineAccount) }}
+				</Button>
 			</div>
 		</div>
 	</Accordion>
+	<ModalWrapper ref="offlineAccountModal" :header="formatMessage(messages.addOfflineAccount)">
+		<div class="flex flex-col gap-4 min-w-[22rem]">
+			<div>
+				<h2 class="m-0 text-base font-medium text-primary">
+					{{ formatMessage(messages.offlineUsername) }}
+				</h2>
+				<p class="m-0 mt-1 text-sm text-secondary leading-tight">
+					{{ formatMessage(messages.offlineDescription) }}
+				</p>
+			</div>
+			<Input
+				v-model="offlineUsername"
+				:icon="UserIcon"
+				type="text"
+				:placeholder="formatMessage(messages.usernamePlaceholder)"
+				autocomplete="off"
+				maxlength="16"
+				@keyup.enter="createOfflineAccount"
+			/>
+			<div class="flex justify-end gap-2">
+				<Button @click="offlineAccountModal?.hide()">
+					{{ formatMessage(messages.cancel) }}
+				</Button>
+				<Button
+					type="colored"
+					color="brand"
+					:disabled="!offlineUsernameValid || offlineAccountCreating"
+					@click="createOfflineAccount"
+				>
+					<SpinnerIcon v-if="offlineAccountCreating" class="animate-spin" />
+					<UserPlusIcon v-else />
+					{{ formatMessage(messages.createAccount) }}
+				</Button>
+			</div>
+		</div>
+	</ModalWrapper>
 </template>
 
 <script setup lang="ts">
@@ -92,7 +145,10 @@ import {
 	RadioButtonCheckedIcon,
 	RadioButtonIcon,
 	SpinnerIcon,
+	TagCategoryWifiOffIcon,
 	TrashIcon,
+	UserIcon,
+	UserPlusIcon,
 } from '@modrinth/assets'
 import {
 	Accordion,
@@ -100,16 +156,19 @@ import {
 	Button,
 	defineMessages,
 	IconButton,
+	Input,
 	injectNotificationManager,
 	useVIntl,
 } from '@modrinth/ui'
 import type { Ref } from 'vue'
 import { computed, onUnmounted, ref } from 'vue'
 
+import ModalWrapper from '@/components/ui/modal/ModalWrapper.vue'
 import { useAppEvent } from '@/composables/use-app-event'
 import { handleSevereError } from '@/composables/use-error.js'
 import { trackEvent } from '@/helpers/analytics'
 import {
+	create_offline_user,
 	get_default_user,
 	login as login_flow,
 	remove_user,
@@ -132,10 +191,14 @@ type MinecraftCredential = {
 		id: string
 		name: string
 	}
+	offline?: boolean
 }
 
 const accounts: Ref<MinecraftCredential[]> = ref([])
 const loginDisabled = ref(false)
+const offlineAccountModal = ref<InstanceType<typeof ModalWrapper> | null>(null)
+const offlineUsername = ref('')
+const offlineAccountCreating = ref(false)
 const defaultUser = ref<string | undefined>()
 const equippedSkin = ref<Skin | null>(null)
 const equippedHeadUrl = ref<string>()
@@ -200,8 +263,12 @@ await refreshValues()
 const selectedAccount = computed(() =>
 	accounts.value.find((account) => account.profile.id === defaultUser.value),
 )
+const offlineUsernameValid = computed(() => /^[A-Za-z0-9_]{3,16}$/.test(offlineUsername.value))
 
 const avatarUrl = computed(() => {
+	if (selectedAccount.value?.offline) {
+		return 'https://launcher-files.modrinth.com/assets/steve_head.png'
+	}
 	if (equippedSkin.value?.texture_key) {
 		const cachedUrl = equippedHeadUrl.value
 		if (cachedUrl) {
@@ -216,6 +283,9 @@ const avatarUrl = computed(() => {
 })
 
 function getAccountAvatarUrl(account: MinecraftCredential) {
+	if (account.offline) {
+		return 'https://launcher-files.modrinth.com/assets/steve_head.png'
+	}
 	if (
 		account.profile.id === selectedAccount.value?.profile?.id &&
 		equippedSkin.value?.texture_key
@@ -226,6 +296,27 @@ function getAccountAvatarUrl(account: MinecraftCredential) {
 		}
 	}
 	return `https://mc-heads.net/avatar/${account.profile.id}/128`
+}
+
+function showOfflineAccountModal() {
+	offlineUsername.value = ''
+	offlineAccountModal.value?.show()
+}
+
+async function createOfflineAccount() {
+	if (!offlineUsernameValid.value || offlineAccountCreating.value) return
+
+	offlineAccountCreating.value = true
+	try {
+		const account = await create_offline_user(offlineUsername.value)
+		await setAccount(account)
+		offlineAccountModal.value?.hide()
+		trackEvent('OfflineAccountCreate')
+	} catch (error) {
+		handleError(error)
+	} finally {
+		offlineAccountCreating.value = false
+	}
 }
 
 async function setAccount(account: MinecraftCredential) {
@@ -288,6 +379,35 @@ const messages = defineMessages({
 	signInToMinecraft: {
 		id: 'minecraft-account.sign-in',
 		defaultMessage: 'Sign in to Minecraft',
+	},
+	addOfflineAccount: {
+		id: 'minecraft-account.add-offline-account',
+		defaultMessage: 'Add offline account',
+	},
+	offlineAccount: {
+		id: 'minecraft-account.offline-account',
+		defaultMessage: 'Offline account',
+	},
+	offlineUsername: {
+		id: 'minecraft-account.offline-username',
+		defaultMessage: 'Minecraft username',
+	},
+	offlineDescription: {
+		id: 'minecraft-account.offline-description',
+		defaultMessage:
+			'Offline accounts work without Microsoft sign-in. They cannot join online-mode servers.',
+	},
+	usernamePlaceholder: {
+		id: 'minecraft-account.username-placeholder',
+		defaultMessage: '3-16 letters, numbers, or underscores',
+	},
+	createAccount: {
+		id: 'minecraft-account.create-account',
+		defaultMessage: 'Create account',
+	},
+	cancel: {
+		id: 'minecraft-account.cancel',
+		defaultMessage: 'Cancel',
 	},
 })
 </script>

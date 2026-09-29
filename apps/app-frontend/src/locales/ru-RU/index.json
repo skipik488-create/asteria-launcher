@@ -4412,11 +4412,29 @@
   "minecraft-account.add-account": {
     "message": "Добавить аккаунт"
   },
+  "minecraft-account.add-offline-account": {
+    "message": "Добавить офлайн-аккаунт"
+  },
+  "minecraft-account.cancel": {
+    "message": "Отмена"
+  },
+  "minecraft-account.create-account": {
+    "message": "Создать аккаунт"
+  },
   "minecraft-account.label": {
     "message": "Аккаунт Minecraft"
   },
   "minecraft-account.not-signed-in": {
     "message": "Вход не выполнен"
+  },
+  "minecraft-account.offline-account": {
+    "message": "Офлайн-аккаунт"
+  },
+  "minecraft-account.offline-description": {
+    "message": "Офлайн-аккаунт работает без входа Microsoft, но не может подключаться к серверам с online-mode."
+  },
+  "minecraft-account.offline-username": {
+    "message": "Никнейм Minecraft"
   },
   "minecraft-account.remove-account": {
     "message": "Удалить аккаунт"
@@ -4426,6 +4444,9 @@
   },
   "minecraft-account.sign-in": {
     "message": "Войти в Minecraft"
+  },
+  "minecraft-account.username-placeholder": {
+    "message": "От 3 до 16 латинских букв, цифр или _"
   },
   "minecraft-required.description": {
     "message": "Для запуска и игры требуется аккаунт Microsoft с приобретённым Minecraft."

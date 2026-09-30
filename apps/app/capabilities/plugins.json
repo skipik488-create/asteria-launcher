@@ -84,6 +84,7 @@
 			]
 		},
 		"auth:default",
+		"auth:allow-create-offline-user",
 		"import:default",
 		"jre:default",
 		"logs:default",
